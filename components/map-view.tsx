@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import maplibregl, { Map } from "maplibre-gl";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { cellToLatLng, gridDisk, latLngToCell } from "h3-js";
 import { MOON_TILE_URL, WEB_MERCATOR_MAX_LAT } from "@/lib/constants";
 import {
@@ -74,6 +75,28 @@ type HistoricSiteState = {
   lat: number;
   lon: number;
   cellId: string;
+};
+
+type EventLink = {
+  label: string;
+  url: string;
+};
+
+type EventImage = {
+  url: string;
+  caption: string;
+  credit: string;
+  license: string;
+  licenseUrl: string;
+  sourcePage: string;
+};
+
+type HistoricEventCard = {
+  summary: string;
+  facts: string[];
+  links: EventLink[];
+  rightsNote?: string;
+  image?: EventImage;
 };
 
 const PLAYER_LABELS: Record<PlayerId, string> = {
@@ -381,6 +404,8 @@ export function MapView() {
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [selectedHistoricSite, setSelectedHistoricSite] = useState<HistoricSiteState | null>(null);
   const [historicSites, setHistoricSites] = useState<HistoricSiteState[]>([]);
+  const [eventCards, setEventCards] = useState<Record<string, HistoricEventCard>>({});
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
 
   const initialLat = useMemo(
     () =>
@@ -396,6 +421,85 @@ export function MapView() {
     const loaded = loadTradeState();
     setTradeState(loaded);
     saveTradeState(loaded);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    void fetch("/data/moon_historic_event_cards.json")
+      .then((response) => response.json() as Promise<Record<string, unknown>>)
+      .then((raw) => {
+        if (!active || !raw || typeof raw !== "object") {
+          return;
+        }
+
+        const next: Record<string, HistoricEventCard> = {};
+        for (const [eventId, value] of Object.entries(raw)) {
+          if (!value || typeof value !== "object") continue;
+          const row = value as {
+            summary?: unknown;
+            facts?: unknown;
+            links?: unknown;
+            rights_note?: unknown;
+            image?: {
+              url?: unknown;
+              caption?: unknown;
+              credit?: unknown;
+              license?: unknown;
+              license_url?: unknown;
+              source_page?: unknown;
+            };
+          };
+
+          const facts = Array.isArray(row.facts) ? row.facts.filter((item) => typeof item === "string") : [];
+          const links = Array.isArray(row.links)
+            ? row.links
+                .map((item) => {
+                  if (!item || typeof item !== "object") return null;
+                  const link = item as { label?: unknown; url?: unknown };
+                  if (typeof link.label !== "string" || typeof link.url !== "string") return null;
+                  return { label: link.label, url: link.url };
+                })
+                .filter((item): item is EventLink => item !== null)
+            : [];
+
+          const image =
+            row.image &&
+            typeof row.image.url === "string" &&
+            typeof row.image.caption === "string" &&
+            typeof row.image.credit === "string" &&
+            typeof row.image.license === "string" &&
+            typeof row.image.license_url === "string" &&
+            typeof row.image.source_page === "string"
+              ? {
+                  url: row.image.url,
+                  caption: row.image.caption,
+                  credit: row.image.credit,
+                  license: row.image.license,
+                  licenseUrl: row.image.license_url,
+                  sourcePage: row.image.source_page,
+                }
+              : undefined;
+
+          next[eventId] = {
+            summary: typeof row.summary === "string" ? row.summary : "",
+            facts,
+            links,
+            rightsNote: typeof row.rights_note === "string" ? row.rights_note : undefined,
+            image,
+          };
+        }
+        setEventCards(next);
+      })
+      .catch(() => {
+        if (active) {
+          setEventCards({});
+        }
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -488,6 +592,7 @@ export function MapView() {
     activeTeam.inventory.ice >= TERRAFORM_ICE_COST &&
     activeTeam.inventory.artifact >= TERRAFORM_ARTIFACT_COST &&
     tradeState.terraformingProgress < MAX_TERRAFORM_PROGRESS;
+  const selectedEventCard = selectedHistoricSite ? eventCards[selectedHistoricSite.id] : undefined;
 
   const commitTradeState = (updater: (current: TradeState) => TradeState) => {
     setTradeState((current) => {
@@ -1088,8 +1193,7 @@ export function MapView() {
           cellId,
         });
         setStatusMessage(`Historic site selected: ${String(props.mission ?? "Unknown Mission")}`);
-      } else {
-        setSelectedHistoricSite(null);
+        setIsEventModalOpen(true);
       }
 
       const clickedFeature = map
@@ -1100,6 +1204,12 @@ export function MapView() {
         cellId ??
         (clickedFeature?.properties?.cell_id as string | undefined) ??
         pointToCellId(event.lngLat.lat, event.lngLat.lng);
+
+      if (!historicFeature) {
+        const linkedSite = historicSites.find((site) => site.cellId === resolvedCellId);
+        setSelectedHistoricSite(linkedSite ?? null);
+        setIsEventModalOpen(Boolean(linkedSite));
+      }
 
       setSelectedCellId(resolvedCellId);
       showSelectedCellOnMap(map, resolvedCellId);
@@ -1124,7 +1234,7 @@ export function MapView() {
       mapRef.current = null;
       map.remove();
     };
-  }, [initialLat, initialLon]);
+  }, [historicSites, initialLat, initialLon]);
 
   return (
     <main style={{ width: "100vw", height: "100vh", display: "flex", background: "#111" }}>
@@ -1266,6 +1376,14 @@ export function MapView() {
                 </a>
               </div>
             )}
+            <div style={{ marginTop: 8 }}>
+              <button
+                onClick={() => setIsEventModalOpen(true)}
+                style={{ width: "100%", padding: "6px 8px" }}
+              >
+                Open Event Card
+              </button>
+            </div>
           </div>
         )}
         <div style={{ fontFamily: "var(--font-geist-mono), monospace", marginBottom: 12 }}>
@@ -1422,6 +1540,133 @@ export function MapView() {
           Reset Scenario
         </button>
       </aside>
+      {isEventModalOpen && selectedHistoricSite && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.58)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 50,
+            padding: 16,
+          }}
+          onClick={() => setIsEventModalOpen(false)}
+        >
+          <div
+            style={{
+              width: "min(760px, 96vw)",
+              maxHeight: "88vh",
+              overflowY: "auto",
+              background: "#151515",
+              color: "#f2efe9",
+              border: "1px solid rgba(255,255,255,0.16)",
+              borderRadius: 10,
+              padding: 16,
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
+              <div>
+                <h3 style={{ margin: 0 }}>{selectedHistoricSite.mission}</h3>
+                <div style={{ opacity: 0.85, fontSize: 13 }}>{selectedHistoricSite.name}</div>
+              </div>
+              <button onClick={() => setIsEventModalOpen(false)} style={{ padding: "4px 8px" }}>
+                Close
+              </button>
+            </div>
+            <div style={{ fontSize: 13, opacity: 0.92, marginBottom: 10 }}>
+              Date: {selectedHistoricSite.eventDate} | Type: {selectedHistoricSite.eventType} | Cell:{" "}
+              {selectedHistoricSite.cellId}
+            </div>
+            <p style={{ marginTop: 0 }}>
+              {selectedEventCard?.summary ?? "Event details are loading or not available yet."}
+            </p>
+            {selectedEventCard?.facts?.length ? (
+              <ul style={{ marginTop: 0 }}>
+                {selectedEventCard.facts.map((fact) => (
+                  <li key={fact}>{fact}</li>
+                ))}
+              </ul>
+            ) : null}
+            {selectedEventCard?.image ? (
+              <figure style={{ margin: "14px 0" }}>
+                <Image
+                  src={selectedEventCard.image.url}
+                  alt={`${selectedHistoricSite.mission} reference`}
+                  width={1200}
+                  height={700}
+                  style={{ width: "100%", maxHeight: 320, objectFit: "cover", borderRadius: 8 }}
+                />
+                <figcaption style={{ fontSize: 12, opacity: 0.9, marginTop: 6 }}>
+                  {selectedEventCard.image.caption}
+                </figcaption>
+                <div style={{ fontSize: 12, opacity: 0.85 }}>
+                  Credit: {selectedEventCard.image.credit}
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.85 }}>
+                  License:{" "}
+                  <a
+                    href={selectedEventCard.image.licenseUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ color: "#bde3ff" }}
+                  >
+                    {selectedEventCard.image.license}
+                  </a>
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.85 }}>
+                  Image source:{" "}
+                  <a
+                    href={selectedEventCard.image.sourcePage}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ color: "#bde3ff" }}
+                  >
+                    Open source page
+                  </a>
+                </div>
+              </figure>
+            ) : null}
+            {selectedEventCard?.rightsNote ? (
+              <div
+                style={{
+                  fontSize: 12,
+                  margin: "10px 0",
+                  padding: 8,
+                  borderRadius: 6,
+                  background: "rgba(255,205,113,0.14)",
+                  border: "1px solid rgba(255,205,113,0.4)",
+                }}
+              >
+                Rights note: {selectedEventCard.rightsNote}
+              </div>
+            ) : null}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {(selectedEventCard?.links ?? []).map((link) => (
+                <a
+                  key={link.url}
+                  href={link.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: "inline-block",
+                    border: "1px solid rgba(255,255,255,0.22)",
+                    borderRadius: 999,
+                    padding: "4px 10px",
+                    textDecoration: "none",
+                    color: "#d7ecff",
+                    fontSize: 12,
+                  }}
+                >
+                  {link.label}
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -1,0 +1,132 @@
+{
+  "apollo-11": {
+    "summary": "人類初の月面有人着陸。ニール・アームストロングとバズ・オルドリンが船外活動を実施。",
+    "facts": [
+      "着陸日: 1969-07-20 (UTC)",
+      "着陸地点: Tranquility Base",
+      "初の有人月面着陸ミッション"
+    ],
+    "links": [
+      {
+        "label": "NASA NSSDCA Lunar Sites",
+        "url": "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"
+      },
+      {
+        "label": "Apollo 11 Mission Overview (NASA)",
+        "url": "https://www.nasa.gov/mission/apollo-11/"
+      }
+    ],
+    "image": {
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Buzz%20Aldrin%20on%20the%20Lunar%20Surface.jpg",
+      "caption": "Apollo 11でのバズ・オルドリン（月面）",
+      "credit": "Neil Armstrong / NASA (via Wikimedia Commons)",
+      "license": "Public Domain (NASA U.S. Government work)",
+      "license_url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source_page": "https://commons.wikimedia.org/wiki/File:Buzz_Aldrin_on_the_Lunar_Surface.jpg"
+    }
+  },
+  "apollo-12": {
+    "summary": "2回目の有人月面着陸。Surveyor 3付近で調査・サンプル採取を実施。",
+    "facts": [
+      "着陸日: 1969-11-19 (UTC)",
+      "着陸地点: Ocean of Storms",
+      "ピンポイント着陸能力を実証"
+    ],
+    "links": [
+      {
+        "label": "NASA NSSDCA Lunar Sites",
+        "url": "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"
+      }
+    ]
+  },
+  "apollo-14": {
+    "summary": "Fra Mauroで地質調査を実施し、サンプル回収を拡張したミッション。",
+    "facts": [
+      "着陸日: 1971-02-05 (UTC)",
+      "着陸地点: Fra Mauro",
+      "月面活動時間を延長"
+    ],
+    "links": [
+      {
+        "label": "NASA NSSDCA Lunar Sites",
+        "url": "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"
+      }
+    ]
+  },
+  "apollo-15": {
+    "summary": "Lunar Roving Vehicleを初投入し、行動半径を拡大したミッション。",
+    "facts": [
+      "着陸日: 1971-07-30 (UTC)",
+      "着陸地点: Hadley-Apennine",
+      "月面車による広域探査"
+    ],
+    "links": [
+      {
+        "label": "NASA NSSDCA Lunar Sites",
+        "url": "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"
+      }
+    ]
+  },
+  "apollo-16": {
+    "summary": "高地地形（Descartes）でのサンプル採取と地質観測を実施。",
+    "facts": [
+      "着陸日: 1972-04-21 (UTC)",
+      "着陸地点: Descartes Highlands",
+      "高地起源物質の分析に貢献"
+    ],
+    "links": [
+      {
+        "label": "NASA NSSDCA Lunar Sites",
+        "url": "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"
+      }
+    ]
+  },
+  "apollo-17": {
+    "summary": "アポロ計画最後の有人月面着陸。長時間EVAと広域調査を実施。",
+    "facts": [
+      "着陸日: 1972-12-11 (UTC)",
+      "着陸地点: Taurus-Littrow",
+      "アポロ計画最終有人着陸"
+    ],
+    "links": [
+      {
+        "label": "NASA NSSDCA Lunar Sites",
+        "url": "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"
+      }
+    ]
+  },
+  "change-4": {
+    "summary": "月の裏側への初の軟着陸。中継衛星を使った通信で探査を継続。",
+    "facts": [
+      "着陸日: 2019-01-03 (UTC)",
+      "着陸地点: Von Karman Crater",
+      "月裏側での初着陸ミッション"
+    ],
+    "links": [
+      {
+        "label": "CNSA Mission Release",
+        "url": "https://www.cnsa.gov.cn/english/n6465719/c6805106/content.html"
+      }
+    ],
+    "rights_note": "画像はライセンス確認が完了した素材のみ利用してください。現在は公式ページリンクのみ表示。"
+  },
+  "chandrayaan-3": {
+    "summary": "月南極域への軟着陸成功。着陸機とローバーによる近傍観測を実施。",
+    "facts": [
+      "着陸日: 2023-08-23 (UTC)",
+      "着陸地点: Shiv Shakti Point 近傍",
+      "月南極域での軟着陸成功"
+    ],
+    "links": [
+      {
+        "label": "ISRO Chandrayaan-3 Details",
+        "url": "https://www.isro.gov.in/ISRO_EN/Chandrayaan3_Details.html"
+      },
+      {
+        "label": "ISRO Copyright Policy",
+        "url": "https://www.isro.gov.in/Copyright_Policy.html"
+      }
+    ],
+    "rights_note": "ISROポリシーに従い、出典明記の上で使用。第三者権利が付く素材は別途確認。"
+  }
+}
