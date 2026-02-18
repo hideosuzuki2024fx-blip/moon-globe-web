@@ -110,6 +110,21 @@
     ],
     "rights_note": "画像はライセンス確認が完了した素材のみ利用してください。現在は公式ページリンクのみ表示。"
   },
+  "change-3": {
+    "summary": "中国の月探査機Chang'e 3が虹の入江付近へ軟着陸し、Yutu roverを展開。",
+    "facts": [
+      "着陸日: 2013-12-14 (UTC)",
+      "着陸地点: Guang Han Gong Crater 付近",
+      "月面軟着陸後にYutu rover運用を実施"
+    ],
+    "links": [
+      {
+        "label": "CNSA: Chang'e 3 Mission Page",
+        "url": "https://www.cnsa.gov.cn/english/n6465652/n6465653/c6765505/content.html"
+      }
+    ],
+    "rights_note": "CNSA掲載素材は原則として転載許可が必要。画像は公式ページ参照リンクのみを使用。"
+  },
   "chandrayaan-3": {
     "summary": "月南極域への軟着陸成功。着陸機とローバーによる近傍観測を実施。",
     "facts": [
@@ -128,5 +143,19 @@
       }
     ],
     "rights_note": "ISROポリシーに従い、出典明記の上で使用。第三者権利が付く素材は別途確認。"
+  },
+  "im-1-odysseus": {
+    "summary": "Intuitive MachinesのOdysseus着陸機が月面南極域（Malapert A付近）への着陸を達成。",
+    "facts": [
+      "着陸日: 2024-02-22 (UTC)",
+      "着陸地点: 緯度 80.13°S, 経度 1.44°E",
+      "NASA CLPSミッションとして商業月面輸送を実施"
+    ],
+    "links": [
+      {
+        "label": "NASA: Odysseus landing release",
+        "url": "https://www.nasa.gov/missions/commercial-lunar-payload-services/nasas-odysseus-lander-settles-onto-moons-surface/"
+      }
+    ]
   }
 }

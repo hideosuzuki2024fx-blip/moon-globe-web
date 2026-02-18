@@ -59,12 +59,28 @@ const licenseRows = [
     url: "https://www.cnsa.gov.cn/english/n6465645/n6465650/index.html",
   },
   {
+    mission: "Chang'e 3",
+    site: "Guang Han Gong Crater Site",
+    source: "CNSA",
+    status: "Caution",
+    note: "Use factual metadata only. Keep attribution and avoid reusing CNSA-hosted media assets without permission.",
+    url: "https://www.cnsa.gov.cn/english/n6465652/n6465653/c6765505/content.html",
+  },
+  {
     mission: "Chandrayaan-3",
     site: "Shiv Shakti Point (Prime Site)",
     source: "ISRO",
     status: "OK",
     note: "ISRO permits reproduction with source acknowledgment; exclude third-party marked content.",
     url: "https://www.isro.gov.in/Copyright_Policy.html",
+  },
+  {
+    mission: "IM-1 Odysseus",
+    site: "Malapert A Region Site",
+    source: "NASA",
+    status: "OK",
+    note: "Facts-only metadata with NASA source link. If using NASA media, keep attribution and non-endorsement use.",
+    url: "https://www.nasa.gov/missions/commercial-lunar-payload-services/nasas-odysseus-lander-settles-onto-moons-surface/",
   },
 ];
 
@@ -138,6 +154,22 @@ export default function SourcesPage() {
             Chandrayaan-3 landing coordinates:{" "}
             <a href="https://www.isro.gov.in/ISRO_EN/Chandrayaan3_Details.html" target="_blank" rel="noreferrer">
               ISRO Chandrayaan-3 Details
+            </a>
+          </li>
+          <li>
+            Chang&apos;e-3 landing coordinates:{" "}
+            <a href="https://www.cnsa.gov.cn/english/n6465652/n6465653/c6765505/content.html" target="_blank" rel="noreferrer">
+              CNSA Chang&apos;e-3 Mission
+            </a>
+          </li>
+          <li>
+            IM-1 Odysseus landing coordinates:{" "}
+            <a
+              href="https://www.nasa.gov/missions/commercial-lunar-payload-services/nasas-odysseus-lander-settles-onto-moons-surface/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              NASA CLPS Odysseus release
             </a>
           </li>
         </ul>

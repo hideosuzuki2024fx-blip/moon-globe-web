@@ -95,6 +95,19 @@
     {
       "type": "Feature",
       "properties": {
+        "id": "change-3",
+        "name": "Guang Han Gong Crater Site",
+        "mission": "Chang'e 3",
+        "event_type": "robotic_soft_landing",
+        "event_date": "2013-12-14",
+        "source": "CNSA",
+        "source_url": "https://www.cnsa.gov.cn/english/n6465652/n6465653/c6765505/content.html"
+      },
+      "geometry": { "type": "Point", "coordinates": [-19.51, 44.12] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
         "id": "chandrayaan-3",
         "name": "Shiv Shakti Point (Prime Site)",
         "mission": "Chandrayaan-3",
@@ -104,6 +117,19 @@
         "source_url": "https://www.isro.gov.in/ISRO_EN/Chandrayaan3_Details.html"
       },
       "geometry": { "type": "Point", "coordinates": [32.348126, -69.367621] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "im-1-odysseus",
+        "name": "Malapert A Region Site",
+        "mission": "IM-1 Odysseus",
+        "event_type": "commercial_soft_landing",
+        "event_date": "2024-02-22",
+        "source": "NASA",
+        "source_url": "https://www.nasa.gov/missions/commercial-lunar-payload-services/nasas-odysseus-lander-settles-onto-moons-surface/"
+      },
+      "geometry": { "type": "Point", "coordinates": [1.44, -80.13] }
     }
   ]
 }

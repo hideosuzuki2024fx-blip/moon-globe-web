@@ -1572,9 +1572,28 @@ export function MapView() {
                 <h3 style={{ margin: 0 }}>{selectedHistoricSite.mission}</h3>
                 <div style={{ opacity: 0.85, fontSize: 13 }}>{selectedHistoricSite.name}</div>
               </div>
-              <button onClick={() => setIsEventModalOpen(false)} style={{ padding: "4px 8px" }}>
-                Close
-              </button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <Link
+                  href={`/history/${selectedHistoricSite.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: "inline-block",
+                    border: "1px solid rgba(255,255,255,0.22)",
+                    borderRadius: 8,
+                    padding: "4px 8px",
+                    textDecoration: "none",
+                    color: "#d7ecff",
+                    fontSize: 12,
+                    height: "fit-content",
+                  }}
+                >
+                  Open in New Window
+                </Link>
+                <button onClick={() => setIsEventModalOpen(false)} style={{ padding: "4px 8px" }}>
+                  Close
+                </button>
+              </div>
             </div>
             <div style={{ fontSize: 13, opacity: 0.92, marginBottom: 10 }}>
               Date: {selectedHistoricSite.eventDate} | Type: {selectedHistoricSite.eventType} | Cell:{" "}
