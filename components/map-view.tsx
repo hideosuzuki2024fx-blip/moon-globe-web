@@ -63,6 +63,17 @@ type TradeState = {
   lastEvent: string;
 };
 
+type HistoricSiteState = {
+  name: string;
+  mission: string;
+  eventType: string;
+  eventDate: string;
+  source: string;
+  lat: number;
+  lon: number;
+  cellId: string;
+};
+
 const PLAYER_LABELS: Record<PlayerId, string> = {
   alice: "Alice",
   bob: "Bob",
@@ -366,6 +377,7 @@ export function MapView() {
   const [listPriceInput, setListPriceInput] = useState(DEFAULT_LIST_PRICE.toString());
   const [tradeError, setTradeError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string>("");
+  const [selectedHistoricSite, setSelectedHistoricSite] = useState<HistoricSiteState | null>(null);
 
   const initialLat = useMemo(
     () =>
@@ -830,6 +842,10 @@ export function MapView() {
             type: "geojson",
             data: { type: "FeatureCollection", features: [] },
           },
+          "historic-sites": {
+            type: "geojson",
+            data: "/data/moon_historic_sites.geojson",
+          },
         },
         layers: [
           {
@@ -854,6 +870,18 @@ export function MapView() {
               "line-color": "#f5d3b4",
               "line-opacity": 0.22,
               "line-width": 0.8,
+            },
+          },
+          {
+            id: "historic-sites-circle",
+            type: "circle",
+            source: "historic-sites",
+            paint: {
+              "circle-radius": 5,
+              "circle-color": "#7dd3fc",
+              "circle-stroke-color": "#04131a",
+              "circle-stroke-width": 1.5,
+              "circle-opacity": 0.95,
             },
           },
           {
@@ -947,24 +975,55 @@ export function MapView() {
 
     map.on("load", refreshGrid);
     map.on("moveend", refreshGrid);
+    map.on("mouseenter", "historic-sites-circle", () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+    map.on("mouseleave", "historic-sites-circle", () => {
+      map.getCanvas().style.cursor = "";
+    });
 
     map.on("click", async (event) => {
+      const historicFeature = map
+        .queryRenderedFeatures(event.point, { layers: ["historic-sites-circle"] })
+        .find((feature) => feature.geometry.type === "Point");
+
+      let cellId: string | undefined;
+      if (historicFeature && historicFeature.geometry.type === "Point") {
+        const props = historicFeature.properties ?? {};
+        const [lon, lat] = historicFeature.geometry.coordinates as [number, number];
+        cellId = latLngToCell(lat, lon, FIXED_HEX_RESOLUTION);
+        setSelectedHistoricSite({
+          name: String(props.name ?? "Unknown Site"),
+          mission: String(props.mission ?? "Unknown Mission"),
+          eventType: String(props.event_type ?? "unknown"),
+          eventDate: String(props.event_date ?? "unknown"),
+          source: String(props.source ?? "unknown"),
+          lat,
+          lon,
+          cellId,
+        });
+        setStatusMessage(`Historic site selected: ${String(props.mission ?? "Unknown Mission")}`);
+      } else {
+        setSelectedHistoricSite(null);
+      }
+
       const clickedFeature = map
         .queryRenderedFeatures(event.point, { layers: ["hex-grid-fill"] })
         .find((feature) => typeof feature.properties?.cell_id === "string");
 
-      const cellId =
+      const resolvedCellId =
+        cellId ??
         (clickedFeature?.properties?.cell_id as string | undefined) ??
         pointToCellId(event.lngLat.lat, event.lngLat.lng);
 
-      setSelectedCellId(cellId);
-      showSelectedCell(cellId);
-      map.setFilter("hex-grid-fill", ["!=", ["get", "cell_id"], cellId]);
-      map.setFilter("hex-grid-line", ["!=", ["get", "cell_id"], cellId]);
+      setSelectedCellId(resolvedCellId);
+      showSelectedCell(resolvedCellId);
+      map.setFilter("hex-grid-fill", ["!=", ["get", "cell_id"], resolvedCellId]);
+      map.setFilter("hex-grid-line", ["!=", ["get", "cell_id"], resolvedCellId]);
       setIsLoadingCell(true);
 
       try {
-        const response = await fetch(`/api/cell?cell_id=${encodeURIComponent(cellId)}`);
+        const response = await fetch(`/api/cell?cell_id=${encodeURIComponent(resolvedCellId)}`);
         const payload = (await response.json()) as CellApiPayload;
         setSelectedCell(payload.cell);
       } catch {
@@ -1049,6 +1108,34 @@ export function MapView() {
         <p style={{ opacity: 0.9, marginBottom: 12 }}>
           Teams landed near the trade-zone perimeter. Explore, mine, build base, and trade sectors.
         </p>
+        {selectedHistoricSite && (
+          <div
+            style={{
+              marginBottom: 12,
+              background: "rgba(125,211,252,0.12)",
+              border: "1px solid rgba(125,211,252,0.35)",
+              borderRadius: 8,
+              padding: 10,
+              fontSize: 12,
+            }}
+          >
+            <div>
+              <strong>Historic Site</strong>: {selectedHistoricSite.name}
+            </div>
+            <div>
+              <strong>Mission</strong>: {selectedHistoricSite.mission}
+            </div>
+            <div>
+              <strong>Date</strong>: {selectedHistoricSite.eventDate}
+            </div>
+            <div>
+              <strong>Type</strong>: {selectedHistoricSite.eventType}
+            </div>
+            <div>
+              <strong>Linked Cell</strong>: {selectedHistoricSite.cellId}
+            </div>
+          </div>
+        )}
         <div style={{ fontFamily: "var(--font-geist-mono), monospace", marginBottom: 12 }}>
           <strong>sol:</strong>
           <div style={{ marginBottom: 8 }}>{tradeState.sol}</div>

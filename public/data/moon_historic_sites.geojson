@@ -1,0 +1,113 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "apollo-11",
+        "name": "Tranquility Base",
+        "mission": "Apollo 11",
+        "event_type": "crewed_landing",
+        "event_date": "1969-07-20",
+        "source": "NASA Apollo 11"
+      },
+      "geometry": { "type": "Point", "coordinates": [23.47314, 0.67408] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "apollo-12",
+        "name": "Ocean of Storms Site",
+        "mission": "Apollo 12",
+        "event_type": "crewed_landing",
+        "event_date": "1969-11-19",
+        "source": "NASA Apollo 12"
+      },
+      "geometry": { "type": "Point", "coordinates": [-23.42157, -3.01239] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "apollo-14",
+        "name": "Fra Mauro Site",
+        "mission": "Apollo 14",
+        "event_type": "crewed_landing",
+        "event_date": "1971-02-05",
+        "source": "NASA Apollo 14"
+      },
+      "geometry": { "type": "Point", "coordinates": [-17.47136, -3.6453] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "apollo-15",
+        "name": "Hadley-Apennine Site",
+        "mission": "Apollo 15",
+        "event_type": "crewed_landing",
+        "event_date": "1971-07-30",
+        "source": "NASA Apollo 15"
+      },
+      "geometry": { "type": "Point", "coordinates": [3.6333, 26.13222] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "apollo-16",
+        "name": "Descartes Highlands Site",
+        "mission": "Apollo 16",
+        "event_type": "crewed_landing",
+        "event_date": "1972-04-21",
+        "source": "NASA Apollo 16"
+      },
+      "geometry": { "type": "Point", "coordinates": [15.5144, -8.973] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "apollo-17",
+        "name": "Taurus-Littrow Site",
+        "mission": "Apollo 17",
+        "event_type": "crewed_landing",
+        "event_date": "1972-12-11",
+        "source": "NASA Apollo 17"
+      },
+      "geometry": { "type": "Point", "coordinates": [30.7658, 20.1908] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "luna-9",
+        "name": "Oceanus Procellarum Site",
+        "mission": "Luna 9",
+        "event_type": "robotic_soft_landing",
+        "event_date": "1966-02-03",
+        "source": "Luna mission archives"
+      },
+      "geometry": { "type": "Point", "coordinates": [-64.368, 7.08] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "change-4",
+        "name": "Von Karman Crater Site",
+        "mission": "Chang'e 4",
+        "event_type": "far_side_landing",
+        "event_date": "2019-01-03",
+        "source": "CNSA mission reports"
+      },
+      "geometry": { "type": "Point", "coordinates": [177.6, -45.5] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "chandrayaan-3",
+        "name": "Shiv Shakti Point",
+        "mission": "Chandrayaan-3",
+        "event_type": "south_pole_landing",
+        "event_date": "2023-08-23",
+        "source": "ISRO mission updates"
+      },
+      "geometry": { "type": "Point", "coordinates": [32.35, -69.37] }
+    }
+  ]
+}
