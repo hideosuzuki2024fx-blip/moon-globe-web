@@ -165,7 +165,7 @@ export function CesiumGlobe() {
 
     for (const site of historicSites) {
       const pointEntity = viewer.entities.add({
-        position: Cesium.Cartesian3.fromDegrees(site.lon, site.lat, 1200),
+        position: Cesium.Cartesian3.fromDegrees(site.lon, site.lat, 20, MOON_ELLIPSOID),
         point: {
           pixelSize: 5,
           color: Cesium.Color.fromCssColorString("#7dd3fc"),
@@ -196,7 +196,7 @@ export function CesiumGlobe() {
 
       const gridEntity = viewer.entities.add({
         polyline: {
-          positions: Cesium.Cartesian3.fromDegreesArray(lonLatPairs),
+          positions: Cesium.Cartesian3.fromDegreesArray(lonLatPairs, MOON_ELLIPSOID),
           width: 1.25,
           material: Cesium.Color.fromCssColorString("#7dd3fc").withAlpha(0.45),
         },
@@ -224,7 +224,7 @@ export function CesiumGlobe() {
     }
 
     const entity = viewer.entities.add({
-      position: Cesium.Cartesian3.fromDegrees(selectedSite.lon, selectedSite.lat, 1500),
+      position: Cesium.Cartesian3.fromDegrees(selectedSite.lon, selectedSite.lat, 40, MOON_ELLIPSOID),
       point: {
         pixelSize: 11,
         color: Cesium.Color.fromCssColorString("#ffe066"),
@@ -247,7 +247,7 @@ export function CesiumGlobe() {
     const selectedCellId = latLngToCell(selectedSite.lat, selectedSite.lon, 6);
     const selectedBoundary = cellToBoundary(selectedCellId);
     const selectedHierarchy = selectedBoundary.map(([lat, lon]) =>
-      Cesium.Cartesian3.fromDegrees(lon, lat, 250),
+      Cesium.Cartesian3.fromDegrees(lon, lat, 20, MOON_ELLIPSOID),
     );
     if (selectedHierarchy.length > 0) {
       selectedHierarchy.push(selectedHierarchy[0]);
