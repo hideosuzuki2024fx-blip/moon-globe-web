@@ -1,16 +1,33 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import * as Cesium from "cesium";
 import { MOON_TILE_URL, WEB_MERCATOR_MAX_LAT } from "@/lib/constants";
 
 const MOON_ELLIPSOID = new Cesium.Ellipsoid(1738100.0, 1738100.0, 1736000.0);
+const SITE_VIEW_HEIGHT_METERS = 1500000;
+
+type HistoricSite = {
+  id: string;
+  name: string;
+  mission: string;
+  lat: number;
+  lon: number;
+};
 
 export function CesiumGlobe() {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const viewerRef = useRef<Cesium.Viewer | null>(null);
+  const selectedSiteEntityRef = useRef<Cesium.Entity | null>(null);
+  const [historicSites, setHistoricSites] = useState<HistoricSite[]>([]);
+  const [selectedSiteId, setSelectedSiteId] = useState<string>("");
+  const selectedSite = useMemo(
+    () => historicSites.find((site) => site.id === selectedSiteId) ?? null,
+    [historicSites, selectedSiteId],
+  );
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -34,6 +51,7 @@ export function CesiumGlobe() {
     });
 
     viewer.scene.globe = new Cesium.Globe(MOON_ELLIPSOID);
+    viewerRef.current = viewer;
     viewer.imageryLayers.removeAll();
     viewer.imageryLayers.addImageryProvider(
       new Cesium.UrlTemplateImageryProvider({
@@ -80,9 +98,97 @@ export function CesiumGlobe() {
 
     return () => {
       handler.destroy();
+      selectedSiteEntityRef.current = null;
+      viewerRef.current = null;
       viewer.destroy();
     };
   }, [router]);
+
+  useEffect(() => {
+    let active = true;
+
+    void fetch("/data/moon_historic_sites.geojson")
+      .then((response) => response.json() as Promise<{ features?: unknown[] }>)
+      .then((collection) => {
+        if (!active || !Array.isArray(collection.features)) {
+          return;
+        }
+
+        const nextSites: HistoricSite[] = [];
+        for (const item of collection.features) {
+          if (!item || typeof item !== "object") continue;
+          const feature = item as {
+            geometry?: { type?: string; coordinates?: number[] };
+            properties?: Record<string, unknown>;
+          };
+          if (feature.geometry?.type !== "Point") continue;
+          const [lon, lat] = feature.geometry.coordinates ?? [];
+          if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+          const props = feature.properties ?? {};
+          const id = String(props.id ?? `${props.mission ?? "site"}-${nextSites.length}`);
+          nextSites.push({
+            id,
+            name: String(props.name ?? "Unknown Site"),
+            mission: String(props.mission ?? "Unknown Mission"),
+            lat,
+            lon,
+          });
+        }
+        setHistoricSites(nextSites);
+      })
+      .catch(() => {
+        if (active) {
+          setHistoricSites([]);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || !selectedSite) {
+      return;
+    }
+
+    if (selectedSiteEntityRef.current) {
+      viewer.entities.remove(selectedSiteEntityRef.current);
+      selectedSiteEntityRef.current = null;
+    }
+
+    const entity = viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(selectedSite.lon, selectedSite.lat, 1500),
+      point: {
+        pixelSize: 10,
+        color: Cesium.Color.fromCssColorString("#7dd3fc"),
+        outlineColor: Cesium.Color.fromCssColorString("#04131a"),
+        outlineWidth: 2,
+      },
+      label: {
+        text: selectedSite.mission,
+        font: "12px sans-serif",
+        fillColor: Cesium.Color.fromCssColorString("#f4ede5"),
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 2,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        verticalOrigin: Cesium.VerticalOrigin.TOP,
+        pixelOffset: new Cesium.Cartesian2(0, 14),
+      },
+    });
+    selectedSiteEntityRef.current = entity;
+
+    viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(
+        selectedSite.lon,
+        selectedSite.lat,
+        SITE_VIEW_HEIGHT_METERS,
+        MOON_ELLIPSOID,
+      ),
+      duration: 1.2,
+    });
+  }, [selectedSite]);
 
   return (
     <main style={{ width: "100vw", height: "100vh", position: "relative" }}>
@@ -100,25 +206,68 @@ export function CesiumGlobe() {
           fontSize: 14,
         }}
       >
-        Click any point to open 2D map at that lat/lon
+        <div style={{ marginBottom: 8 }}>Click any point to open 2D map at that lat/lon</div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <select
+            value={selectedSiteId}
+            onChange={(event) => setSelectedSiteId(event.target.value)}
+            style={{
+              width: 220,
+              maxWidth: "45vw",
+              padding: "4px 6px",
+              background: "rgba(12,12,12,0.85)",
+              color: "#f4ede5",
+              border: "1px solid rgba(255,255,255,0.2)",
+              borderRadius: 6,
+            }}
+          >
+            <option value="">Historic event...</option>
+            {historicSites.map((site) => (
+              <option key={site.id} value={site.id}>
+                {site.mission}
+              </option>
+            ))}
+          </select>
+          {selectedSite && (
+            <Link
+              href={`/map?lat=${selectedSite.lat.toFixed(6)}&lon=${selectedSite.lon.toFixed(6)}`}
+              style={{ color: "#9fd6ff", textDecoration: "none", fontSize: 12 }}
+            >
+              Open in Map
+            </Link>
+          )}
+        </div>
       </div>
-      <Link
-        href="/how-to-play"
-        style={{
-          position: "absolute",
-          top: 16,
-          right: 16,
-          background: "rgba(0, 0, 0, 0.66)",
-          color: "#f4ede5",
-          padding: "10px 12px",
-          border: "1px solid rgba(255,255,255,0.2)",
-          borderRadius: 8,
-          fontSize: 14,
-          textDecoration: "none",
-        }}
-      >
-        How To Play
-      </Link>
+      <div style={{ position: "absolute", top: 16, right: 16, display: "flex", gap: 8 }}>
+        <Link
+          href="/sources"
+          style={{
+            background: "rgba(0, 0, 0, 0.66)",
+            color: "#f4ede5",
+            padding: "10px 12px",
+            border: "1px solid rgba(255,255,255,0.2)",
+            borderRadius: 8,
+            fontSize: 14,
+            textDecoration: "none",
+          }}
+        >
+          Sources
+        </Link>
+        <Link
+          href="/how-to-play"
+          style={{
+            background: "rgba(0, 0, 0, 0.66)",
+            color: "#f4ede5",
+            padding: "10px 12px",
+            border: "1px solid rgba(255,255,255,0.2)",
+            borderRadius: 8,
+            fontSize: 14,
+            textDecoration: "none",
+          }}
+        >
+          How To Play
+        </Link>
+      </div>
     </main>
   );
 }

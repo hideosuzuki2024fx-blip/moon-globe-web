@@ -9,7 +9,8 @@
         "mission": "Apollo 11",
         "event_type": "crewed_landing",
         "event_date": "1969-07-20",
-        "source": "NASA Apollo 11"
+        "source": "NASA NSSDCA",
+        "source_url": "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"
       },
       "geometry": { "type": "Point", "coordinates": [23.47314, 0.67408] }
     },
@@ -21,9 +22,10 @@
         "mission": "Apollo 12",
         "event_type": "crewed_landing",
         "event_date": "1969-11-19",
-        "source": "NASA Apollo 12"
+        "source": "NASA NSSDCA",
+        "source_url": "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"
       },
-      "geometry": { "type": "Point", "coordinates": [-23.42157, -3.01239] }
+      "geometry": { "type": "Point", "coordinates": [-23.4219, -3.0128] }
     },
     {
       "type": "Feature",
@@ -33,9 +35,10 @@
         "mission": "Apollo 14",
         "event_type": "crewed_landing",
         "event_date": "1971-02-05",
-        "source": "NASA Apollo 14"
+        "source": "NASA NSSDCA",
+        "source_url": "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"
       },
-      "geometry": { "type": "Point", "coordinates": [-17.47136, -3.6453] }
+      "geometry": { "type": "Point", "coordinates": [-17.47194, -3.64589] }
     },
     {
       "type": "Feature",
@@ -45,9 +48,10 @@
         "mission": "Apollo 15",
         "event_type": "crewed_landing",
         "event_date": "1971-07-30",
-        "source": "NASA Apollo 15"
+        "source": "NASA NSSDCA",
+        "source_url": "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"
       },
-      "geometry": { "type": "Point", "coordinates": [3.6333, 26.13222] }
+      "geometry": { "type": "Point", "coordinates": [3.6333, 26.13239] }
     },
     {
       "type": "Feature",
@@ -57,9 +61,10 @@
         "mission": "Apollo 16",
         "event_type": "crewed_landing",
         "event_date": "1972-04-21",
-        "source": "NASA Apollo 16"
+        "source": "NASA NSSDCA",
+        "source_url": "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"
       },
-      "geometry": { "type": "Point", "coordinates": [15.5144, -8.973] }
+      "geometry": { "type": "Point", "coordinates": [15.5011, -8.9734] }
     },
     {
       "type": "Feature",
@@ -69,21 +74,10 @@
         "mission": "Apollo 17",
         "event_type": "crewed_landing",
         "event_date": "1972-12-11",
-        "source": "NASA Apollo 17"
+        "source": "NASA NSSDCA",
+        "source_url": "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"
       },
-      "geometry": { "type": "Point", "coordinates": [30.7658, 20.1908] }
-    },
-    {
-      "type": "Feature",
-      "properties": {
-        "id": "luna-9",
-        "name": "Oceanus Procellarum Site",
-        "mission": "Luna 9",
-        "event_type": "robotic_soft_landing",
-        "event_date": "1966-02-03",
-        "source": "Luna mission archives"
-      },
-      "geometry": { "type": "Point", "coordinates": [-64.368, 7.08] }
+      "geometry": { "type": "Point", "coordinates": [30.7723, 20.1911] }
     },
     {
       "type": "Feature",
@@ -93,7 +87,8 @@
         "mission": "Chang'e 4",
         "event_type": "far_side_landing",
         "event_date": "2019-01-03",
-        "source": "CNSA mission reports"
+        "source": "CNSA",
+        "source_url": "https://www.cnsa.gov.cn/english/n6465719/c6805106/content.html"
       },
       "geometry": { "type": "Point", "coordinates": [177.6, -45.5] }
     },
@@ -101,13 +96,14 @@
       "type": "Feature",
       "properties": {
         "id": "chandrayaan-3",
-        "name": "Shiv Shakti Point",
+        "name": "Shiv Shakti Point (Prime Site)",
         "mission": "Chandrayaan-3",
         "event_type": "south_pole_landing",
         "event_date": "2023-08-23",
-        "source": "ISRO mission updates"
+        "source": "ISRO",
+        "source_url": "https://www.isro.gov.in/ISRO_EN/Chandrayaan3_Details.html"
       },
-      "geometry": { "type": "Point", "coordinates": [32.35, -69.37] }
+      "geometry": { "type": "Point", "coordinates": [32.348126, -69.367621] }
     }
   ]
 }

@@ -64,11 +64,13 @@ type TradeState = {
 };
 
 type HistoricSiteState = {
+  id: string;
   name: string;
   mission: string;
   eventType: string;
   eventDate: string;
   source: string;
+  sourceUrl: string;
   lat: number;
   lon: number;
   cellId: string;
@@ -378,6 +380,7 @@ export function MapView() {
   const [tradeError, setTradeError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [selectedHistoricSite, setSelectedHistoricSite] = useState<HistoricSiteState | null>(null);
+  const [historicSites, setHistoricSites] = useState<HistoricSiteState[]>([]);
 
   const initialLat = useMemo(
     () =>
@@ -393,6 +396,56 @@ export function MapView() {
     const loaded = loadTradeState();
     setTradeState(loaded);
     saveTradeState(loaded);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    void fetch("/data/moon_historic_sites.geojson")
+      .then((response) => response.json() as Promise<{ features?: unknown[] }>)
+      .then((collection) => {
+        if (!active || !Array.isArray(collection.features)) {
+          return;
+        }
+
+        const nextSites: HistoricSiteState[] = [];
+        for (const item of collection.features) {
+          if (!item || typeof item !== "object") continue;
+          const feature = item as {
+            geometry?: { type?: string; coordinates?: number[] };
+            properties?: Record<string, unknown>;
+          };
+          if (feature.geometry?.type !== "Point") continue;
+          const coordinates = feature.geometry.coordinates ?? [];
+          if (!Array.isArray(coordinates) || coordinates.length < 2) continue;
+          const [lon, lat] = coordinates;
+          if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+          const props = (feature.properties ?? {}) as Record<string, unknown>;
+          const id = String(props.id ?? `${props.mission ?? "site"}-${nextSites.length}`);
+          nextSites.push({
+            id,
+            name: String(props.name ?? "Unknown Site"),
+            mission: String(props.mission ?? "Unknown Mission"),
+            eventType: String(props.event_type ?? "unknown"),
+            eventDate: String(props.event_date ?? "unknown"),
+            source: String(props.source ?? "unknown"),
+            sourceUrl: String(props.source_url ?? ""),
+            lat,
+            lon,
+            cellId: latLngToCell(lat, lon, FIXED_HEX_RESOLUTION),
+          });
+        }
+        setHistoricSites(nextSites);
+      })
+      .catch(() => {
+        if (active) {
+          setHistoricSites([]);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const selectedOwnedCell = useMemo(() => {
@@ -810,6 +863,66 @@ export function MapView() {
     setStatusMessage("Scenario reset. New landing positions generated.");
   };
 
+  const showSelectedCellOnMap = (map: Map, cellId: string | null) => {
+    const polygonSource = map.getSource("selected-cell") as maplibregl.GeoJSONSource | undefined;
+    const centerSource = map.getSource("selected-cell-center") as maplibregl.GeoJSONSource | undefined;
+    if (!polygonSource || !centerSource) {
+      return;
+    }
+
+    polygonSource.setData(cellsToFeatureCollection(cellId ? [cellId] : []));
+
+    if (!cellId) {
+      centerSource.setData({ type: "FeatureCollection", features: [] });
+      return;
+    }
+
+    const [lat, lon] = cellToLatLng(cellId);
+    centerSource.setData({
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          properties: { cell_id: cellId },
+          geometry: {
+            type: "Point",
+            coordinates: [lon, lat],
+          },
+        },
+      ],
+    });
+  };
+
+  const selectCell = async (map: Map, cellId: string) => {
+    setSelectedCellId(cellId);
+    showSelectedCellOnMap(map, cellId);
+    map.setFilter("hex-grid-fill", ["!=", ["get", "cell_id"], cellId]);
+    map.setFilter("hex-grid-line", ["!=", ["get", "cell_id"], cellId]);
+    setIsLoadingCell(true);
+
+    try {
+      const response = await fetch(`/api/cell?cell_id=${encodeURIComponent(cellId)}`);
+      const payload = (await response.json()) as CellApiPayload;
+      setSelectedCell(payload.cell);
+    } catch {
+      setSelectedCell(null);
+    } finally {
+      setIsLoadingCell(false);
+    }
+  };
+
+  const selectHistoricSiteById = async (siteId: string) => {
+    const site = historicSites.find((item) => item.id === siteId) ?? null;
+    setSelectedHistoricSite(site);
+    if (!site || !mapRef.current) {
+      return;
+    }
+
+    mapRef.current.flyTo({ center: [site.lon, site.lat], zoom: Math.max(mapRef.current.getZoom(), 6) });
+    setStatusMessage(`Historic site selected: ${site.mission}`);
+    await selectCell(mapRef.current, site.cellId);
+  };
+
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) {
       return;
@@ -943,36 +1056,6 @@ export function MapView() {
       source.setData(cellsToFeatureCollection(cellIds));
     };
 
-    const showSelectedCell = (cellId: string | null) => {
-      const polygonSource = map.getSource("selected-cell") as maplibregl.GeoJSONSource | undefined;
-      const centerSource = map.getSource("selected-cell-center") as maplibregl.GeoJSONSource | undefined;
-      if (!polygonSource || !centerSource) {
-        return;
-      }
-
-      polygonSource.setData(cellsToFeatureCollection(cellId ? [cellId] : []));
-
-      if (!cellId) {
-        centerSource.setData({ type: "FeatureCollection", features: [] });
-        return;
-      }
-
-      const [lat, lon] = cellToLatLng(cellId);
-      centerSource.setData({
-        type: "FeatureCollection",
-        features: [
-          {
-            type: "Feature",
-            properties: { cell_id: cellId },
-            geometry: {
-              type: "Point",
-              coordinates: [lon, lat],
-            },
-          },
-        ],
-      });
-    };
-
     map.on("load", refreshGrid);
     map.on("moveend", refreshGrid);
     map.on("mouseenter", "historic-sites-circle", () => {
@@ -993,11 +1076,13 @@ export function MapView() {
         const [lon, lat] = historicFeature.geometry.coordinates as [number, number];
         cellId = latLngToCell(lat, lon, FIXED_HEX_RESOLUTION);
         setSelectedHistoricSite({
+          id: String(props.id ?? "unknown"),
           name: String(props.name ?? "Unknown Site"),
           mission: String(props.mission ?? "Unknown Mission"),
           eventType: String(props.event_type ?? "unknown"),
           eventDate: String(props.event_date ?? "unknown"),
           source: String(props.source ?? "unknown"),
+          sourceUrl: String(props.source_url ?? ""),
           lat,
           lon,
           cellId,
@@ -1017,7 +1102,7 @@ export function MapView() {
         pointToCellId(event.lngLat.lat, event.lngLat.lng);
 
       setSelectedCellId(resolvedCellId);
-      showSelectedCell(resolvedCellId);
+      showSelectedCellOnMap(map, resolvedCellId);
       map.setFilter("hex-grid-fill", ["!=", ["get", "cell_id"], resolvedCellId]);
       map.setFilter("hex-grid-line", ["!=", ["get", "cell_id"], resolvedCellId]);
       setIsLoadingCell(true);
@@ -1087,6 +1172,22 @@ export function MapView() {
           >
             Full Guide
           </Link>
+          <Link
+            href="/sources"
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display: "inline-block",
+              color: "#f5e8dc",
+              border: "1px solid rgba(255,255,255,0.24)",
+              borderRadius: 999,
+              padding: "4px 10px",
+              textDecoration: "none",
+              fontSize: 12,
+            }}
+          >
+            Sources
+          </Link>
         </div>
         <details
           style={{
@@ -1108,6 +1209,25 @@ export function MapView() {
         <p style={{ opacity: 0.9, marginBottom: 12 }}>
           Teams landed near the trade-zone perimeter. Explore, mine, build base, and trade sectors.
         </p>
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ display: "block", marginBottom: 4, fontSize: 12 }}>
+            Historic Event
+          </label>
+          <select
+            value={selectedHistoricSite?.id ?? ""}
+            onChange={(event) => {
+              void selectHistoricSiteById(event.target.value);
+            }}
+            style={{ width: "100%", padding: 6, background: "#221b17", color: "#f5e8dc" }}
+          >
+            <option value="">Select event...</option>
+            {historicSites.map((site) => (
+              <option key={site.id} value={site.id}>
+                {site.mission} - {site.name}
+              </option>
+            ))}
+          </select>
+        </div>
         {selectedHistoricSite && (
           <div
             style={{
@@ -1134,6 +1254,18 @@ export function MapView() {
             <div>
               <strong>Linked Cell</strong>: {selectedHistoricSite.cellId}
             </div>
+            {selectedHistoricSite.sourceUrl && (
+              <div>
+                <a
+                  href={selectedHistoricSite.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: "#c6e7ff" }}
+                >
+                  Source
+                </a>
+              </div>
+            )}
           </div>
         )}
         <div style={{ fontFamily: "var(--font-geist-mono), monospace", marginBottom: 12 }}>
