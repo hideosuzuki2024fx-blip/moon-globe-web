@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import * as Cesium from "cesium";
+import { cellToBoundary, latLngToCell } from "h3-js";
 import { MOON_TILE_URL, WEB_MERCATOR_MAX_LAT } from "@/lib/constants";
 
 const MOON_ELLIPSOID = new Cesium.Ellipsoid(1738100.0, 1738100.0, 1736000.0);
@@ -22,6 +23,8 @@ export function CesiumGlobe() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const viewerRef = useRef<Cesium.Viewer | null>(null);
   const selectedSiteEntityRef = useRef<Cesium.Entity | null>(null);
+  const selectedGridEntityRef = useRef<Cesium.Entity | null>(null);
+  const historicOverlayEntitiesRef = useRef<Cesium.Entity[]>([]);
   const [historicSites, setHistoricSites] = useState<HistoricSite[]>([]);
   const [selectedSiteId, setSelectedSiteId] = useState<string>("");
   const selectedSite = useMemo(
@@ -99,6 +102,8 @@ export function CesiumGlobe() {
     return () => {
       handler.destroy();
       selectedSiteEntityRef.current = null;
+      selectedGridEntityRef.current = null;
+      historicOverlayEntitiesRef.current = [];
       viewerRef.current = null;
       viewer.destroy();
     };
@@ -149,7 +154,60 @@ export function CesiumGlobe() {
 
   useEffect(() => {
     const viewer = viewerRef.current;
-    if (!viewer || !selectedSite) {
+    if (!viewer) {
+      return;
+    }
+
+    for (const entity of historicOverlayEntitiesRef.current) {
+      viewer.entities.remove(entity);
+    }
+    historicOverlayEntitiesRef.current = [];
+
+    for (const site of historicSites) {
+      const pointEntity = viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(site.lon, site.lat, 1200),
+        point: {
+          pixelSize: 5,
+          color: Cesium.Color.fromCssColorString("#7dd3fc"),
+          outlineColor: Cesium.Color.fromCssColorString("#04131a"),
+          outlineWidth: 1.5,
+        },
+        label: {
+          text: site.mission,
+          font: "11px sans-serif",
+          fillColor: Cesium.Color.fromCssColorString("#e8f6ff"),
+          outlineColor: Cesium.Color.BLACK,
+          outlineWidth: 2,
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          verticalOrigin: Cesium.VerticalOrigin.TOP,
+          pixelOffset: new Cesium.Cartesian2(0, 12),
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 5500000),
+        },
+      });
+      historicOverlayEntitiesRef.current.push(pointEntity);
+
+      const cellId = latLngToCell(site.lat, site.lon, 6);
+      const boundary = cellToBoundary(cellId);
+      const lonLatPairs = boundary.flatMap(([lat, lon]) => [lon, lat]);
+      const first = boundary[0];
+      if (first) {
+        lonLatPairs.push(first[1], first[0]);
+      }
+
+      const gridEntity = viewer.entities.add({
+        polyline: {
+          positions: Cesium.Cartesian3.fromDegreesArray(lonLatPairs),
+          width: 1.25,
+          material: Cesium.Color.fromCssColorString("#7dd3fc").withAlpha(0.45),
+        },
+      });
+      historicOverlayEntitiesRef.current.push(gridEntity);
+    }
+  }, [historicSites]);
+
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer) {
       return;
     }
 
@@ -157,13 +215,20 @@ export function CesiumGlobe() {
       viewer.entities.remove(selectedSiteEntityRef.current);
       selectedSiteEntityRef.current = null;
     }
+    if (selectedGridEntityRef.current) {
+      viewer.entities.remove(selectedGridEntityRef.current);
+      selectedGridEntityRef.current = null;
+    }
+    if (!selectedSite) {
+      return;
+    }
 
     const entity = viewer.entities.add({
       position: Cesium.Cartesian3.fromDegrees(selectedSite.lon, selectedSite.lat, 1500),
       point: {
-        pixelSize: 10,
-        color: Cesium.Color.fromCssColorString("#7dd3fc"),
-        outlineColor: Cesium.Color.fromCssColorString("#04131a"),
+        pixelSize: 11,
+        color: Cesium.Color.fromCssColorString("#ffe066"),
+        outlineColor: Cesium.Color.fromCssColorString("#2b2102"),
         outlineWidth: 2,
       },
       label: {
@@ -178,6 +243,26 @@ export function CesiumGlobe() {
       },
     });
     selectedSiteEntityRef.current = entity;
+
+    const selectedCellId = latLngToCell(selectedSite.lat, selectedSite.lon, 6);
+    const selectedBoundary = cellToBoundary(selectedCellId);
+    const selectedHierarchy = selectedBoundary.map(([lat, lon]) =>
+      Cesium.Cartesian3.fromDegrees(lon, lat, 250),
+    );
+    if (selectedHierarchy.length > 0) {
+      selectedHierarchy.push(selectedHierarchy[0]);
+    }
+    selectedGridEntityRef.current = viewer.entities.add({
+      polygon: {
+        hierarchy: selectedHierarchy,
+        material: Cesium.Color.fromCssColorString("#ffe066").withAlpha(0.2),
+      },
+      polyline: {
+        positions: selectedHierarchy,
+        width: 2.5,
+        material: Cesium.Color.fromCssColorString("#ffe066").withAlpha(0.95),
+      },
+    });
 
     viewer.camera.flyTo({
       destination: Cesium.Cartesian3.fromDegrees(
@@ -207,6 +292,9 @@ export function CesiumGlobe() {
         }}
       >
         <div style={{ marginBottom: 8 }}>Click any point to open 2D map at that lat/lon</div>
+        <div style={{ marginBottom: 8, fontSize: 12, opacity: 0.9 }}>
+          Historical cells are shown as blue points and hex outlines.
+        </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <select
             value={selectedSiteId}
