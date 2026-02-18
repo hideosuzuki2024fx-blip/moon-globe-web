@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS cells (
+  cell_id TEXT PRIMARY KEY,
+  props JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

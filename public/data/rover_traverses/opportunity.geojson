@@ -1,0 +1,20 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "rover": "opportunity",
+        "note": "placeholder traverse"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-34.1912, -14.5684],
+          [-34.20, -14.57],
+          [-34.215, -14.575]
+        ]
+      }
+    }
+  ]
+}

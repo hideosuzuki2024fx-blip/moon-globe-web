@@ -1,0 +1,27 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Sample Landing Site A",
+        "mission": "Placeholder"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [137.4417, -4.5895]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Sample Landing Site B",
+        "mission": "Placeholder"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-34.1912, -14.5684]
+      }
+    }
+  ]
+}
