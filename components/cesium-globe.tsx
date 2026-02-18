@@ -48,7 +48,24 @@ export function CesiumGlobe() {
     });
 
     const handler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
+    const DRAG_THRESHOLD_PX = 6;
+    let pointerDown: Cesium.Cartesian2 | null = null;
+
     handler.setInputAction((event: Cesium.ScreenSpaceEventHandler.PositionedEvent) => {
+      pointerDown = Cesium.Cartesian2.clone(event.position);
+    }, Cesium.ScreenSpaceEventType.LEFT_DOWN);
+
+    handler.setInputAction((event: Cesium.ScreenSpaceEventHandler.PositionedEvent) => {
+      if (!pointerDown) {
+        return;
+      }
+
+      const delta = Cesium.Cartesian2.distance(pointerDown, event.position);
+      pointerDown = null;
+      if (delta > DRAG_THRESHOLD_PX) {
+        return;
+      }
+
       const picked = viewer.camera.pickEllipsoid(event.position, MOON_ELLIPSOID);
       if (!picked) {
         return;
@@ -59,7 +76,7 @@ export function CesiumGlobe() {
       const lon = Cesium.Math.toDegrees(cartographic.longitude);
       const latClamped = Math.max(-WEB_MERCATOR_MAX_LAT, Math.min(WEB_MERCATOR_MAX_LAT, lat));
       router.push(`/map?lat=${latClamped.toFixed(6)}&lon=${lon.toFixed(6)}`);
-    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+    }, Cesium.ScreenSpaceEventType.LEFT_UP);
 
     return () => {
       handler.destroy();
