@@ -328,6 +328,20 @@ export function CesiumGlobe() {
       </div>
       <div style={{ position: "absolute", top: 16, right: 16, display: "flex", gap: 8 }}>
         <Link
+          href="/demo-lite"
+          style={{
+            background: "rgba(0, 0, 0, 0.66)",
+            color: "#f4ede5",
+            padding: "10px 12px",
+            border: "1px solid rgba(255,255,255,0.2)",
+            borderRadius: 8,
+            fontSize: 14,
+            textDecoration: "none",
+          }}
+        >
+          Lite Demo
+        </Link>
+        <Link
           href="/sources"
           style={{
             background: "rgba(0, 0, 0, 0.66)",
