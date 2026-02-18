@@ -1,12 +1,12 @@
-# Mars Globe Web
+# Moon Globe Web
 
-このリポジトリは、火星グリッド取引デモの「入口（ハブ）」です。  
+このリポジトリは、月面グリッド取引デモの「入口（ハブ）」です。  
 ポートフォリオとしては、まずここを見れば全体像が分かる構成にしています。
 
 ## Portfolio Overview (3 Repositories)
 
 - Hub / Globe UI（このリポジトリ）
-  - https://github.com/hideosuzuki2024fx-blip/mars-globe-web
+  - https://github.com/hideosuzuki2024fx-blip/moon-globe-web
   - 3D Globe -> 2D Hex Map の体験入口
 - Trade Demo（取引ロジック + Join + Market）
   - https://github.com/hideosuzuki2024fx-blip/mars-grid-demo
@@ -17,16 +17,16 @@
 
 ## Demo Flow (Recommended)
 
-1. `mars-globe-web` の `/` で 3D Globe を回す  
+1. `moon-globe-web` の `/` で 3D Globe を回す  
 2. 地点クリックで `/map` に遷移（Hex選択）  
 3. `mars-grid-demo` の map/join/market で取引デモを見る  
 4. `cosmorwa-mars-nft` でオンチェーン側の将来拡張を確認する
 
-## This Repository Scope (`mars-globe-web`)
+## This Repository Scope (`moon-globe-web`)
 
-Google Mars 風 UI で、以下を行う Next.js アプリです。
+Google Moon 風 UI で、以下を行う Next.js アプリです。
 
-- `/` : CesiumJS で 3D 火星グローブ表示。クリック地点の緯度経度を取得して `/map` へ遷移
+- `/` : CesiumJS で 3D 月面グローブ表示。クリック地点の緯度経度を取得して `/map` へ遷移
 - `/map` : MapLibre GL JS で 2D 平面マップ表示。Hex グリッドを描画し、セルクリックで `/api/cell` を参照
 - `/api/cell` : Neon Postgres 上の `cells` テーブルを GET/POST で参照・upsert
 
@@ -37,8 +37,8 @@ Google Mars 風 UI で、以下を行う Next.js アプリです。
 - MapLibre GL JS (2D)
 - Neon Postgres (`@neondatabase/serverless`)
 - Hex: `h3-js`
-- Mars basemap (external tiles):
-  `https://cartocdn-gusc.global.ssl.fastly.net/opmbuilder/api/v1/map/named/opm-mars-basemap-v0-2/all/{z}/{x}/{y}.png`
+- Moon basemap (external tiles):
+  `https://cartocdn-gusc.global.ssl.fastly.net/opmbuilder/api/v1/map/named/opm-moon-basemap-v0-1/all/{z}/{x}/{y}.png`
 
 ## Local Setup
 
