@@ -54,6 +54,7 @@ export function CesiumGlobe() {
     });
 
     viewer.scene.globe = new Cesium.Globe(MOON_ELLIPSOID);
+    viewer.scene.globe.enableLighting = false;
     viewerRef.current = viewer;
     viewer.imageryLayers.removeAll();
     viewer.imageryLayers.addImageryProvider(
@@ -167,41 +168,14 @@ export function CesiumGlobe() {
       const pointEntity = viewer.entities.add({
         position: Cesium.Cartesian3.fromDegrees(site.lon, site.lat, 20, MOON_ELLIPSOID),
         point: {
-          pixelSize: 5,
+          pixelSize: 11,
           color: Cesium.Color.fromCssColorString("#7dd3fc"),
           outlineColor: Cesium.Color.fromCssColorString("#04131a"),
-          outlineWidth: 1.5,
-        },
-        label: {
-          text: site.mission,
-          font: "11px sans-serif",
-          fillColor: Cesium.Color.fromCssColorString("#e8f6ff"),
-          outlineColor: Cesium.Color.BLACK,
           outlineWidth: 2,
-          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-          verticalOrigin: Cesium.VerticalOrigin.TOP,
-          pixelOffset: new Cesium.Cartesian2(0, 12),
-          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 5500000),
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
         },
       });
       historicOverlayEntitiesRef.current.push(pointEntity);
-
-      const cellId = latLngToCell(site.lat, site.lon, 6);
-      const boundary = cellToBoundary(cellId);
-      const lonLatPairs = boundary.flatMap(([lat, lon]) => [lon, lat]);
-      const first = boundary[0];
-      if (first) {
-        lonLatPairs.push(first[1], first[0]);
-      }
-
-      const gridEntity = viewer.entities.add({
-        polyline: {
-          positions: Cesium.Cartesian3.fromDegreesArray(lonLatPairs, MOON_ELLIPSOID),
-          width: 1.25,
-          material: Cesium.Color.fromCssColorString("#7dd3fc").withAlpha(0.45),
-        },
-      });
-      historicOverlayEntitiesRef.current.push(gridEntity);
     }
   }, [historicSites]);
 
@@ -226,20 +200,22 @@ export function CesiumGlobe() {
     const entity = viewer.entities.add({
       position: Cesium.Cartesian3.fromDegrees(selectedSite.lon, selectedSite.lat, 40, MOON_ELLIPSOID),
       point: {
-        pixelSize: 11,
+        pixelSize: 16,
         color: Cesium.Color.fromCssColorString("#ffe066"),
         outlineColor: Cesium.Color.fromCssColorString("#2b2102"),
         outlineWidth: 2,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
       },
       label: {
         text: selectedSite.mission,
-        font: "12px sans-serif",
+        font: "13px sans-serif",
         fillColor: Cesium.Color.fromCssColorString("#f4ede5"),
         outlineColor: Cesium.Color.BLACK,
         outlineWidth: 2,
         style: Cesium.LabelStyle.FILL_AND_OUTLINE,
         verticalOrigin: Cesium.VerticalOrigin.TOP,
         pixelOffset: new Cesium.Cartesian2(0, 14),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
       },
     });
     selectedSiteEntityRef.current = entity;
@@ -293,7 +269,7 @@ export function CesiumGlobe() {
       >
         <div style={{ marginBottom: 8 }}>Click any point to open 2D map at that lat/lon</div>
         <div style={{ marginBottom: 8, fontSize: 12, opacity: 0.9 }}>
-          Historical cells are shown as blue points and hex outlines.
+          Historical points are shown as large blue markers for visibility.
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <select
