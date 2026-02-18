@@ -997,9 +997,9 @@ export function MapView() {
         }}
       >
         <h2 style={{ fontSize: 18, marginBottom: 12 }}>Opportunity Frontier Ops</h2>
-        <div style={{ marginBottom: 12 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
           <Link
-            href="/how-to-play"
+            href="/"
             style={{
               display: "inline-block",
               color: "#f5e8dc",
@@ -1010,9 +1010,42 @@ export function MapView() {
               fontSize: 12,
             }}
           >
-            Play Guide
+            Back to Globe
+          </Link>
+          <Link
+            href="/how-to-play"
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display: "inline-block",
+              color: "#f5e8dc",
+              border: "1px solid rgba(255,255,255,0.24)",
+              borderRadius: 999,
+              padding: "4px 10px",
+              textDecoration: "none",
+              fontSize: 12,
+            }}
+          >
+            Full Guide
           </Link>
         </div>
+        <details
+          style={{
+            marginBottom: 12,
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid rgba(255,255,255,0.14)",
+            borderRadius: 8,
+            padding: "8px 10px",
+          }}
+        >
+          <summary style={{ cursor: "pointer", fontSize: 12 }}>Quick Guide</summary>
+          <div style={{ marginTop: 8, fontSize: 12, lineHeight: 1.5, opacity: 0.95 }}>
+            <div>1. Select a sector on the map.</div>
+            <div>2. Explore to unlock cells and gather resources.</div>
+            <div>3. Claim, list, and buy cells in the trade zone.</div>
+            <div>4. Build base and run terraforming operations.</div>
+          </div>
+        </details>
         <p style={{ opacity: 0.9, marginBottom: 12 }}>
           Teams landed near the trade-zone perimeter. Explore, mine, build base, and trade sectors.
         </p>
