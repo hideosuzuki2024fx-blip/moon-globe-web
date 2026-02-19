@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import maplibregl, { Map } from "maplibre-gl";
 import { gridDisk, latLngToCell } from "h3-js";
 import { MOON_TILE_URL } from "@/lib/constants";
 import { FIXED_HEX_RESOLUTION, cellsToFeatureCollection } from "@/lib/hex";
 
-type PlayerId = "alice" | "bob";
+type PlayerId = "alice" | "bob" | "carol" | "dave";
 
 type WalletState = Record<PlayerId, number>;
+type EnergyState = Record<PlayerId, number>;
+type ExploredState = Record<PlayerId, string[]>;
 
 type OwnedCellState = {
   owner: PlayerId;
@@ -19,35 +21,53 @@ type OwnedCellState = {
 
 type LiteState = {
   wallets: WalletState;
-  exploredCellIds: Record<PlayerId, string[]>;
+  energy: EnergyState;
+  exploredCellIds: ExploredState;
   cells: Record<string, OwnedCellState>;
   turn: number;
+  gameHours: number;
+  activePlayerIndex: number;
   lastEvent: string;
 };
 
+const PLAYERS: PlayerId[] = ["alice", "bob", "carol", "dave"];
 const PLAYER_LABELS: Record<PlayerId, string> = {
   alice: "Alice",
   bob: "Bob",
+  carol: "Carol",
+  dave: "Dave",
 };
 
-const STORAGE_KEY = "moon-demo-lite-v1";
+const STORAGE_KEY = "moon-demo-lite-apollo11-v2";
+const TURN_HOURS = 6;
 const INITIAL_TOKENS = 300;
+const INITIAL_ENERGY = 90;
+const MAX_ENERGY = 180;
+const SOLAR_BASE_GAIN = 18;
+const EXPLORE_ENERGY_COST = 14;
 const CLAIM_PRICE = 20;
 const MIN_LIST_PRICE = 5;
 const DEFAULT_LIST_PRICE = 35;
-const DEMO_CENTER = { lat: -69.367621, lon: 32.348126 };
+
+const APOLLO11_CENTER = { lat: 0.67408, lon: 23.47314 };
 const DEMO_RING = 4;
-const DEMO_CELL_IDS = gridDisk(latLngToCell(DEMO_CENTER.lat, DEMO_CENTER.lon, FIXED_HEX_RESOLUTION), DEMO_RING);
+const MONUMENT_CELL_ID = latLngToCell(APOLLO11_CENTER.lat, APOLLO11_CENTER.lon, FIXED_HEX_RESOLUTION);
+const DEMO_CELL_IDS = gridDisk(MONUMENT_CELL_ID, DEMO_RING);
+const MONUMENT_RING = gridDisk(MONUMENT_CELL_ID, 1).filter((cellId) => cellId !== MONUMENT_CELL_ID);
 
 function parseIntSafe(value: unknown, fallback: number) {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
   return Math.floor(value);
 }
 
+function isPlayerId(value: unknown): value is PlayerId {
+  return value === "alice" || value === "bob" || value === "carol" || value === "dave";
+}
+
 function sanitizeCellState(value: unknown): OwnedCellState | null {
   if (!value || typeof value !== "object") return null;
   const row = value as Partial<OwnedCellState>;
-  if (row.owner !== "alice" && row.owner !== "bob") return null;
+  if (!isPlayerId(row.owner)) return null;
   const listedPrice =
     typeof row.listedPrice === "number" && Number.isFinite(row.listedPrice)
       ? Math.max(MIN_LIST_PRICE, Math.floor(row.listedPrice))
@@ -64,14 +84,26 @@ function createInitialState(): LiteState {
     wallets: {
       alice: INITIAL_TOKENS,
       bob: INITIAL_TOKENS,
+      carol: INITIAL_TOKENS,
+      dave: INITIAL_TOKENS,
+    },
+    energy: {
+      alice: INITIAL_ENERGY,
+      bob: INITIAL_ENERGY,
+      carol: INITIAL_ENERGY,
+      dave: INITIAL_ENERGY,
     },
     exploredCellIds: {
       alice: [],
       bob: [],
+      carol: [],
+      dave: [],
     },
     cells: {},
     turn: 1,
-    lastEvent: "Lite demo ready. Explore first, then claim and trade.",
+    gameHours: 0,
+    activePlayerIndex: 0,
+    lastEvent: "Lite demo ready. Explore, claim, trade, and control the monument ring.",
   };
 }
 
@@ -79,29 +111,42 @@ function sanitizeState(value: unknown): LiteState {
   const fallback = createInitialState();
   if (!value || typeof value !== "object") return fallback;
   const src = value as Partial<LiteState>;
-  const nextCells: Record<string, OwnedCellState> = {};
+  const cells: Record<string, OwnedCellState> = {};
   for (const [cellId, row] of Object.entries(src.cells ?? {})) {
     if (!DEMO_CELL_IDS.includes(cellId)) continue;
     const safe = sanitizeCellState(row);
-    if (safe) nextCells[cellId] = safe;
+    if (safe && cellId !== MONUMENT_CELL_ID) cells[cellId] = safe;
   }
-  const sanitizeExplored = (player: PlayerId) => {
-    const source = src.exploredCellIds?.[player];
-    if (!Array.isArray(source)) return [];
-    return [...new Set(source.filter((item): item is string => typeof item === "string" && DEMO_CELL_IDS.includes(item)))];
+
+  const sanitizePlayerList = (player: PlayerId) => {
+    const row = src.exploredCellIds?.[player];
+    if (!Array.isArray(row)) return [];
+    return [...new Set(row.filter((item): item is string => typeof item === "string" && DEMO_CELL_IDS.includes(item)))];
   };
 
   return {
     wallets: {
       alice: parseIntSafe(src.wallets?.alice, INITIAL_TOKENS),
       bob: parseIntSafe(src.wallets?.bob, INITIAL_TOKENS),
+      carol: parseIntSafe(src.wallets?.carol, INITIAL_TOKENS),
+      dave: parseIntSafe(src.wallets?.dave, INITIAL_TOKENS),
+    },
+    energy: {
+      alice: Math.max(0, Math.min(MAX_ENERGY, parseIntSafe(src.energy?.alice, INITIAL_ENERGY))),
+      bob: Math.max(0, Math.min(MAX_ENERGY, parseIntSafe(src.energy?.bob, INITIAL_ENERGY))),
+      carol: Math.max(0, Math.min(MAX_ENERGY, parseIntSafe(src.energy?.carol, INITIAL_ENERGY))),
+      dave: Math.max(0, Math.min(MAX_ENERGY, parseIntSafe(src.energy?.dave, INITIAL_ENERGY))),
     },
     exploredCellIds: {
-      alice: sanitizeExplored("alice"),
-      bob: sanitizeExplored("bob"),
+      alice: sanitizePlayerList("alice"),
+      bob: sanitizePlayerList("bob"),
+      carol: sanitizePlayerList("carol"),
+      dave: sanitizePlayerList("dave"),
     },
-    cells: nextCells,
+    cells,
     turn: Math.max(1, parseIntSafe(src.turn, 1)),
+    gameHours: Math.max(0, parseIntSafe(src.gameHours, 0)),
+    activePlayerIndex: Math.min(PLAYERS.length - 1, Math.max(0, parseIntSafe(src.activePlayerIndex, 0))),
     lastEvent: typeof src.lastEvent === "string" ? src.lastEvent : fallback.lastEvent,
   };
 }
@@ -126,30 +171,81 @@ function randomInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+function illuminationAtHours(gameHours: number, lon: number) {
+  const localHour = ((gameHours + lon / 15) % 24 + 24) % 24;
+  if (localHour < 6 || localHour > 18) return 0;
+  const progress = (localHour - 6) / 12;
+  return Math.sin(progress * Math.PI);
+}
+
+function getMonumentController(cells: Record<string, OwnedCellState>): PlayerId | null {
+  let best: PlayerId | null = null;
+  let bestCount = 0;
+  for (const player of PLAYERS) {
+    const count = MONUMENT_RING.reduce((acc, cellId) => acc + (cells[cellId]?.owner === player ? 1 : 0), 0);
+    if (count > bestCount) {
+      best = player;
+      bestCount = count;
+    }
+  }
+  if (bestCount < 4) return null;
+  return best;
+}
+
+function getMonumentProgress(cells: Record<string, OwnedCellState>) {
+  const result: Record<PlayerId, number> = {
+    alice: 0,
+    bob: 0,
+    carol: 0,
+    dave: 0,
+  };
+  for (const cellId of MONUMENT_RING) {
+    const owner = cells[cellId]?.owner;
+    if (owner) result[owner] += 1;
+  }
+  return result;
+}
+
 export function DemoLiteView() {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
   const [state, setState] = useState<LiteState>(() => loadState());
   const [selectedCellId, setSelectedCellId] = useState<string | null>(null);
-  const [activePlayer, setActivePlayer] = useState<PlayerId>("alice");
   const [listPriceInput, setListPriceInput] = useState(DEFAULT_LIST_PRICE.toString());
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const selectedCell = useMemo(() => (selectedCellId ? state.cells[selectedCellId] ?? null : null), [selectedCellId, state.cells]);
+  const activePlayer = PLAYERS[state.activePlayerIndex];
+  const selectedCell = selectedCellId ? state.cells[selectedCellId] ?? null : null;
+  const isMonumentCell = selectedCellId === MONUMENT_CELL_ID;
   const activeBalance = state.wallets[activePlayer];
-  const isExplored = Boolean(selectedCellId && state.exploredCellIds[activePlayer].includes(selectedCellId));
-  const canClaim = Boolean(selectedCellId && !selectedCell && isExplored && activeBalance >= CLAIM_PRICE);
+  const activeEnergy = state.energy[activePlayer];
+  const activeExplored = selectedCellId ? state.exploredCellIds[activePlayer].includes(selectedCellId) : false;
+  const canExplore = Boolean(selectedCellId && !activeExplored && activeEnergy >= EXPLORE_ENERGY_COST);
+  const canClaim = Boolean(
+    selectedCellId &&
+      !isMonumentCell &&
+      !selectedCell &&
+      activeExplored &&
+      activeBalance >= CLAIM_PRICE &&
+      activeEnergy >= 4,
+  );
   const canList =
-    Boolean(selectedCellId && selectedCell?.owner === activePlayer) &&
+    Boolean(selectedCellId && selectedCell && selectedCell.owner === activePlayer && !isMonumentCell) &&
     Number.isFinite(Number(listPriceInput)) &&
     Number(listPriceInput) >= MIN_LIST_PRICE;
   const canBuy = Boolean(
     selectedCellId &&
       selectedCell &&
+      !isMonumentCell &&
       selectedCell.owner !== activePlayer &&
       selectedCell.listedPrice !== null &&
       activeBalance >= selectedCell.listedPrice,
   );
+
+  const illumination = illuminationAtHours(state.gameHours, APOLLO11_CENTER.lon);
+  const temperatureBand = illumination > 0.6 ? "hot day" : illumination > 0.2 ? "day" : "night";
+  const monumentController = getMonumentController(state.cells);
+  const monumentProgress = getMonumentProgress(state.cells);
 
   const applyState = (updater: (current: LiteState) => LiteState) => {
     setState((current) => {
@@ -159,96 +255,143 @@ export function DemoLiteView() {
     });
   };
 
+  const advanceTurn = (current: LiteState, eventText: string) => {
+    const nextHours = current.gameHours + TURN_HOURS;
+    const illum = illuminationAtHours(nextHours, APOLLO11_CENTER.lon);
+    const nextEnergy: EnergyState = { ...current.energy };
+    for (const player of PLAYERS) {
+      const gain = Math.floor(SOLAR_BASE_GAIN * (0.25 + illum * 0.75));
+      nextEnergy[player] = Math.min(MAX_ENERGY, nextEnergy[player] + gain);
+    }
+
+    const controller = getMonumentController(current.cells);
+    const nextWallets = { ...current.wallets };
+    let bonusText = "";
+    if (controller) {
+      nextWallets[controller] += 10;
+      bonusText = ` Monument bonus: ${PLAYER_LABELS[controller]} +10 LUNA.`;
+    }
+
+    return {
+      ...current,
+      wallets: nextWallets,
+      energy: nextEnergy,
+      gameHours: nextHours,
+      turn: current.turn + 1,
+      activePlayerIndex: (current.activePlayerIndex + 1) % PLAYERS.length,
+      lastEvent: `${eventText}${bonusText}`,
+    };
+  };
+
   const showSelectedCellOnMap = (map: Map, cellId: string | null) => {
-    const polygonSource = map.getSource("selected-cell") as maplibregl.GeoJSONSource | undefined;
-    if (!polygonSource) return;
-    polygonSource.setData(cellsToFeatureCollection(cellId ? [cellId] : []));
+    const source = map.getSource("selected-cell") as maplibregl.GeoJSONSource | undefined;
+    if (!source) return;
+    source.setData(cellsToFeatureCollection(cellId ? [cellId] : []));
   };
 
   const exploreCell = () => {
-    if (!selectedCellId) {
-      setErrorMessage("セルを選択してください。");
+    if (!selectedCellId) return;
+    if (state.exploredCellIds[activePlayer].includes(selectedCellId)) {
+      setErrorMessage("That cell is already explored by this player.");
       return;
     }
-    if (state.exploredCellIds[activePlayer].includes(selectedCellId)) {
-      setErrorMessage("そのセルは探索済みです。");
+    if (activeEnergy < EXPLORE_ENERGY_COST) {
+      setErrorMessage("Not enough energy.");
       return;
     }
     setErrorMessage(null);
-    const tokenGain = randomInt(4, 14);
-    applyState((current) => ({
-      ...current,
-      wallets: {
-        ...current.wallets,
-        [activePlayer]: current.wallets[activePlayer] + tokenGain,
-      },
-      exploredCellIds: {
-        ...current.exploredCellIds,
-        [activePlayer]: [...current.exploredCellIds[activePlayer], selectedCellId],
-      },
-      turn: current.turn + 1,
-      lastEvent: `${PLAYER_LABELS[activePlayer]} explored ${selectedCellId} (+${tokenGain} LUNA).`,
-    }));
+
+    const yieldFactor = temperatureBand === "night" ? 0.7 : temperatureBand === "hot day" ? 1.15 : 1;
+    const gain = Math.max(3, Math.floor(randomInt(6, 16) * yieldFactor));
+
+    applyState((current) =>
+      advanceTurn(
+        {
+          ...current,
+          wallets: {
+            ...current.wallets,
+            [activePlayer]: current.wallets[activePlayer] + gain,
+          },
+          energy: {
+            ...current.energy,
+            [activePlayer]: Math.max(0, current.energy[activePlayer] - EXPLORE_ENERGY_COST),
+          },
+          exploredCellIds: {
+            ...current.exploredCellIds,
+            [activePlayer]: [...new Set([...current.exploredCellIds[activePlayer], selectedCellId])],
+          },
+        },
+        `${PLAYER_LABELS[activePlayer]} explored ${selectedCellId} (+${gain} LUNA).`,
+      ),
+    );
   };
 
   const claimCell = () => {
-    if (!selectedCellId) return;
+    if (!selectedCellId || isMonumentCell) return;
     if (!state.exploredCellIds[activePlayer].includes(selectedCellId)) {
-      setErrorMessage("claim前に探索が必要です。");
+      setErrorMessage("Explore before claim.");
       return;
     }
     if (state.cells[selectedCellId]) {
-      setErrorMessage("すでに所有されています。");
+      setErrorMessage("Cell already owned.");
       return;
     }
     if (activeBalance < CLAIM_PRICE) {
-      setErrorMessage("残高不足です。");
+      setErrorMessage("Not enough balance.");
       return;
     }
     setErrorMessage(null);
-    applyState((current) => ({
-      ...current,
-      wallets: {
-        ...current.wallets,
-        [activePlayer]: current.wallets[activePlayer] - CLAIM_PRICE,
-      },
-      cells: {
-        ...current.cells,
-        [selectedCellId]: {
-          owner: activePlayer,
-          listedPrice: null,
-          updatedAt: new Date().toISOString(),
+    applyState((current) =>
+      advanceTurn(
+        {
+          ...current,
+          wallets: {
+            ...current.wallets,
+            [activePlayer]: current.wallets[activePlayer] - CLAIM_PRICE,
+          },
+          energy: {
+            ...current.energy,
+            [activePlayer]: Math.max(0, current.energy[activePlayer] - 4),
+          },
+          cells: {
+            ...current.cells,
+            [selectedCellId]: {
+              owner: activePlayer,
+              listedPrice: null,
+              updatedAt: new Date().toISOString(),
+            },
+          },
         },
-      },
-      turn: current.turn + 1,
-      lastEvent: `${PLAYER_LABELS[activePlayer]} claimed ${selectedCellId} (-${CLAIM_PRICE} LUNA).`,
-    }));
+        `${PLAYER_LABELS[activePlayer]} claimed ${selectedCellId} (-${CLAIM_PRICE} LUNA).`,
+      ),
+    );
   };
 
   const listCell = () => {
     if (!selectedCellId) return;
     const price = Math.max(MIN_LIST_PRICE, Math.floor(Number(listPriceInput)));
     if (!Number.isFinite(price)) {
-      setErrorMessage("価格が不正です。");
+      setErrorMessage("Invalid list price.");
       return;
     }
     setErrorMessage(null);
     applyState((current) => {
       const owned = current.cells[selectedCellId];
       if (!owned || owned.owner !== activePlayer) return current;
-      return {
-        ...current,
-        cells: {
-          ...current.cells,
-          [selectedCellId]: {
-            ...owned,
-            listedPrice: price,
-            updatedAt: new Date().toISOString(),
+      return advanceTurn(
+        {
+          ...current,
+          cells: {
+            ...current.cells,
+            [selectedCellId]: {
+              ...owned,
+              listedPrice: price,
+              updatedAt: new Date().toISOString(),
+            },
           },
         },
-        turn: current.turn + 1,
-        lastEvent: `${PLAYER_LABELS[activePlayer]} listed ${selectedCellId} at ${price} LUNA.`,
-      };
+        `${PLAYER_LABELS[activePlayer]} listed ${selectedCellId} at ${price} LUNA.`,
+      );
     });
   };
 
@@ -258,52 +401,54 @@ export function DemoLiteView() {
     applyState((current) => {
       const owned = current.cells[selectedCellId];
       if (!owned || owned.owner !== activePlayer) return current;
-      return {
-        ...current,
-        cells: {
-          ...current.cells,
-          [selectedCellId]: {
-            ...owned,
-            listedPrice: null,
-            updatedAt: new Date().toISOString(),
+      return advanceTurn(
+        {
+          ...current,
+          cells: {
+            ...current.cells,
+            [selectedCellId]: {
+              ...owned,
+              listedPrice: null,
+              updatedAt: new Date().toISOString(),
+            },
           },
         },
-        turn: current.turn + 1,
-        lastEvent: `${PLAYER_LABELS[activePlayer]} removed listing from ${selectedCellId}.`,
-      };
+        `${PLAYER_LABELS[activePlayer]} removed listing on ${selectedCellId}.`,
+      );
     });
   };
 
   const buyCell = () => {
-    if (!selectedCellId) return;
+    if (!selectedCellId || isMonumentCell) return;
     setErrorMessage(null);
     applyState((current) => {
       const target = current.cells[selectedCellId];
       if (!target || target.owner === activePlayer || target.listedPrice === null) return current;
       if (current.wallets[activePlayer] < target.listedPrice) {
-        setErrorMessage("残高不足で購入できません。");
+        setErrorMessage("Not enough balance.");
         return current;
       }
       const seller = target.owner;
       const price = target.listedPrice;
-      return {
-        ...current,
-        wallets: {
-          ...current.wallets,
-          [activePlayer]: current.wallets[activePlayer] - price,
-          [seller]: current.wallets[seller] + price,
-        },
-        cells: {
-          ...current.cells,
-          [selectedCellId]: {
-            owner: activePlayer,
-            listedPrice: null,
-            updatedAt: new Date().toISOString(),
+      return advanceTurn(
+        {
+          ...current,
+          wallets: {
+            ...current.wallets,
+            [activePlayer]: current.wallets[activePlayer] - price,
+            [seller]: current.wallets[seller] + price,
+          },
+          cells: {
+            ...current.cells,
+            [selectedCellId]: {
+              owner: activePlayer,
+              listedPrice: null,
+              updatedAt: new Date().toISOString(),
+            },
           },
         },
-        turn: current.turn + 1,
-        lastEvent: `${PLAYER_LABELS[activePlayer]} bought ${selectedCellId} from ${PLAYER_LABELS[seller]}.`,
-      };
+        `${PLAYER_LABELS[activePlayer]} bought ${selectedCellId} from ${PLAYER_LABELS[seller]}.`,
+      );
     });
   };
 
@@ -317,6 +462,7 @@ export function DemoLiteView() {
       showSelectedCellOnMap(mapRef.current, null);
       mapRef.current.setFilter("demo-grid-fill", true);
       mapRef.current.setFilter("demo-grid-line", true);
+      mapRef.current.setFilter("monument-cell-fill", true);
     }
   };
 
@@ -325,10 +471,10 @@ export function DemoLiteView() {
 
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      center: [DEMO_CENTER.lon, DEMO_CENTER.lat],
-      zoom: 6.2,
-      minZoom: 5,
-      maxZoom: 9,
+      center: [APOLLO11_CENTER.lon, APOLLO11_CENTER.lat],
+      zoom: 6.4,
+      minZoom: 5.8,
+      maxZoom: 9.4,
       style: {
         version: 8,
         sources: {
@@ -341,6 +487,10 @@ export function DemoLiteView() {
           "demo-grid": {
             type: "geojson",
             data: cellsToFeatureCollection(DEMO_CELL_IDS),
+          },
+          "monument-cell": {
+            type: "geojson",
+            data: cellsToFeatureCollection([MONUMENT_CELL_ID]),
           },
           "selected-cell": {
             type: "geojson",
@@ -364,8 +514,26 @@ export function DemoLiteView() {
             source: "demo-grid",
             paint: {
               "line-color": "#9fd6ff",
-              "line-width": 1.1,
-              "line-opacity": 0.52,
+              "line-width": 1.15,
+              "line-opacity": 0.5,
+            },
+          },
+          {
+            id: "monument-cell-fill",
+            type: "fill",
+            source: "monument-cell",
+            paint: {
+              "fill-color": "#ff8a5b",
+              "fill-opacity": 0.45,
+            },
+          },
+          {
+            id: "monument-cell-line",
+            type: "line",
+            source: "monument-cell",
+            paint: {
+              "line-color": "#ffd3c2",
+              "line-width": 2.2,
             },
           },
           {
@@ -374,7 +542,7 @@ export function DemoLiteView() {
             source: "selected-cell",
             paint: {
               "fill-color": "#fff27a",
-              "fill-opacity": 0.65,
+              "fill-opacity": 0.62,
             },
           },
           {
@@ -416,7 +584,7 @@ export function DemoLiteView() {
       <div ref={mapContainerRef} style={{ flex: 1 }} />
       <aside
         style={{
-          width: 340,
+          width: 360,
           borderLeft: "1px solid rgba(255,255,255,0.14)",
           padding: 16,
           background: "#13181a",
@@ -425,62 +593,65 @@ export function DemoLiteView() {
           overflowY: "auto",
         }}
       >
-        <h2 style={{ marginTop: 0, marginBottom: 10 }}>Lite Trade Demo</h2>
-        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+        <h2 style={{ marginTop: 0, marginBottom: 10 }}>Apollo Monument Lite</h2>
+        <div style={{ display: "flex", gap: 8, marginBottom: 10, fontSize: 13 }}>
           <Link href="/" style={{ color: "#c6e7ff", textDecoration: "none" }}>
             Globe
           </Link>
           <Link href="/map" style={{ color: "#c6e7ff", textDecoration: "none" }}>
             Full Map
           </Link>
+          <Link href="/how-to-play-lite" style={{ color: "#c6e7ff", textDecoration: "none" }}>
+            Lite Guide
+          </Link>
         </div>
         <p style={{ marginTop: 0, opacity: 0.88 }}>
-          Fixed small zone only. Use this mode to quickly test whether trading mechanics feel fun.
+          4-player compact zone. Monument cell is not tradable. Control at least 4/6 surrounding cells for bonus.
         </p>
         <div style={{ marginBottom: 8 }}>
           <strong>turn:</strong> {state.turn}
         </div>
         <div style={{ marginBottom: 8 }}>
-          <strong>zone:</strong> {DEMO_CELL_IDS.length} cells (ring {DEMO_RING})
+          <strong>time:</strong> +{state.gameHours}h (x{TURN_HOURS}h/turn)
+        </div>
+        <div style={{ marginBottom: 8 }}>
+          <strong>illumination:</strong> {Math.round(illumination * 100)}% ({temperatureBand})
+        </div>
+        <div style={{ marginBottom: 8 }}>
+          <strong>active:</strong> {PLAYER_LABELS[activePlayer]}
+        </div>
+        <div style={{ marginBottom: 8 }}>
+          <strong>wallet:</strong> {activeBalance} LUNA
+        </div>
+        <div style={{ marginBottom: 8 }}>
+          <strong>energy:</strong> {activeEnergy}/{MAX_ENERGY}
         </div>
         <div style={{ marginBottom: 8 }}>
           <strong>selected:</strong> {selectedCellId ?? "none"}
         </div>
         <div style={{ marginBottom: 10 }}>
-          <label style={{ display: "block", marginBottom: 4 }}>Active Player</label>
-          <select
-            value={activePlayer}
-            onChange={(event) => {
-              setActivePlayer(event.target.value as PlayerId);
-              setErrorMessage(null);
-            }}
-            style={{ width: "100%", padding: 6, background: "#1f272a", color: "#f0f6fa" }}
-          >
-            <option value="alice">Alice</option>
-            <option value="bob">Bob</option>
-          </select>
+          <strong>monument control:</strong>{" "}
+          {monumentController ? `${PLAYER_LABELS[monumentController]} (bonus active)` : "none"}
         </div>
-        <div style={{ marginBottom: 8 }}>
-          <strong>Wallet:</strong> {state.wallets[activePlayer]} LUNA
+        <div style={{ marginBottom: 10, fontSize: 12, opacity: 0.88 }}>
+          {PLAYERS.map((player) => (
+            <div key={player}>
+              {PLAYER_LABELS[player]}: {monumentProgress[player]}/6 ring cells
+            </div>
+          ))}
         </div>
-        <div style={{ marginBottom: 8 }}>
-          <strong>Explored:</strong> {state.exploredCellIds[activePlayer].length}
-        </div>
-        <div style={{ marginBottom: 8 }}>
-          <strong>Owner:</strong> {selectedCell ? PLAYER_LABELS[selectedCell.owner] : "none"}
-        </div>
-        <div style={{ marginBottom: 8 }}>
-          <strong>Listed:</strong> {selectedCell?.listedPrice ?? "none"}
-        </div>
-        <div style={{ marginBottom: 8, opacity: 0.88 }}>{state.lastEvent}</div>
+        <div style={{ marginBottom: 10, opacity: 0.88 }}>{state.lastEvent}</div>
         <hr style={{ borderColor: "rgba(255,255,255,0.16)", margin: "12px 0" }} />
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-          <button onClick={exploreCell} disabled={!selectedCellId || isExplored} style={{ flex: 1, padding: "6px 8px" }}>
-            Explore
+          <button onClick={exploreCell} disabled={!canExplore} style={{ flex: 1, padding: "6px 8px" }}>
+            Explore (-{EXPLORE_ENERGY_COST}E)
           </button>
           <button onClick={claimCell} disabled={!canClaim} style={{ flex: 1, padding: "6px 8px" }}>
             Claim ({CLAIM_PRICE})
           </button>
+        </div>
+        <div style={{ marginBottom: 8, fontSize: 12, opacity: 0.9 }}>
+          {isMonumentCell ? "Monument cell is locked from ownership and trading." : "Selected cell can be traded."}
         </div>
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
           <input
@@ -498,7 +669,7 @@ export function DemoLiteView() {
           </button>
           <button
             onClick={unlistCell}
-            disabled={!selectedCellId || selectedCell?.owner !== activePlayer || selectedCell?.listedPrice === null}
+            disabled={!selectedCellId || !selectedCell || selectedCell.owner !== activePlayer || selectedCell.listedPrice === null}
             style={{ flex: 1, padding: "6px 8px" }}
           >
             Unlist
